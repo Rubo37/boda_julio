@@ -1,0 +1,140 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
+
+export default function ListaInvitados() {
+  const [invitados, setInvitados] = useState(() => {
+    const almacenados = localStorage.getItem("invitados_boda");
+    return almacenados ? JSON.parse(almacenados) : [
+      { nombre: "Juan Pérez", confirmado: false, foto: "" },
+      { nombre: "Ana López", confirmado: false, foto: "" },
+    ];
+  });
+
+  const [nuevoInvitado, setNuevoInvitado] = useState("");
+  const [nuevaFoto, setNuevaFoto] = useState("");
+  const [filtro, setFiltro] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("invitados_boda", JSON.stringify(invitados));
+  }, [invitados]);
+
+  const agregarInvitado = () => {
+    if (nuevoInvitado.trim() !== "") {
+      setInvitados([...invitados, { nombre: nuevoInvitado, confirmado: false, foto: nuevaFoto }]);
+      setNuevoInvitado("");
+      setNuevaFoto("");
+    }
+  };
+
+  const toggleConfirmacion = (index) => {
+    const nuevosInvitados = [...invitados];
+    nuevosInvitados[index].confirmado = !nuevosInvitados[index].confirmado;
+    setInvitados(nuevosInvitados);
+  };
+
+  const eliminarInvitado = (index) => {
+    const nuevosInvitados = invitados.filter((_, i) => i !== index);
+    setInvitados(nuevosInvitados);
+  };
+
+  const exportarCSV = () => {
+    const encabezado = "Nombre,Confirmado\n";
+    const filas = invitados.map(i => `${i.nombre},${i.confirmado ? "Sí" : "No"}`).join("\n");
+    const csv = encabezado + filas;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lista_invitados.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const imprimirLista = () => {
+    const ventana = window.open("", "_blank");
+    const contenido = `
+      <html>
+        <head><title>Lista de Invitados</title></head>
+        <body>
+          <h1>Lista de Invitados</h1>
+          <ul>
+            ${invitados.map(i => `<li>${i.nombre} - ${i.confirmado ? "Confirmado" : "No confirmado"}</li>`).join("")}
+          </ul>
+          <script>window.print()</script>
+        </body>
+      </html>`;
+    ventana.document.write(contenido);
+    ventana.document.close();
+  };
+
+  const totalConfirmados = invitados.filter((i) => i.confirmado).length;
+  const totalInvitados = invitados.length;
+
+  const invitadosFiltrados = invitados.filter(i =>
+    i.nombre.toLowerCase().includes(filtro.toLowerCase())
+  );
+
+  return (
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-center gap-4">
+        <img src="https://cdn-icons-png.flaticon.com/512/4140/4140037.png" alt="Novio calvo" className="w-24 h-24 rounded-full" />
+        <img src="https://cdn-icons-png.flaticon.com/512/4140/4140047.png" alt="Novia" className="w-24 h-24 rounded-full" />
+      </div>
+      <h1 className="text-3xl font-bold text-center">Lista de Invitados</h1>
+      <div className="flex flex-wrap gap-2 items-center">
+        <Input
+          placeholder="Buscar invitado..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="flex-1"
+        />
+        <Search className="text-gray-500" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Input
+          placeholder="Agregar nuevo invitado"
+          value={nuevoInvitado}
+          onChange={(e) => setNuevoInvitado(e.target.value)}
+        />
+        <Input
+          placeholder="URL de la foto (opcional)"
+          value={nuevaFoto}
+          onChange={(e) => setNuevaFoto(e.target.value)}
+        />
+        <Button onClick={agregarInvitado}>Agregar</Button>
+        <Button variant="outline" onClick={exportarCSV}>Exportar CSV</Button>
+        <Button variant="outline" onClick={imprimirLista}>Imprimir / Exportar PDF</Button>
+      </div>
+      <div className="text-center">
+        <p className="text-sm text-gray-600">
+          Confirmados: {totalConfirmados} / {totalInvitados}
+        </p>
+      </div>
+      <div className="space-y-2">
+        {invitadosFiltrados.map((invitado, index) => (
+          <Card key={index} className="flex items-center justify-between p-2">
+            <CardContent className="flex items-center gap-4">
+              <Checkbox
+                checked={invitado.confirmado}
+                onCheckedChange={() => toggleConfirmacion(index)}
+              />
+              {invitado.foto && (
+                <img src={invitado.foto} alt="Invitado" className="w-10 h-10 rounded-full object-cover" />
+              )}
+              <span className={invitado.confirmado ? "line-through text-green-600" : ""}>
+                {invitado.nombre}
+              </span>
+            </CardContent>
+            <Button variant="destructive" size="sm" onClick={() => eliminarInvitado(index)}>
+              Eliminar
+            </Button>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
